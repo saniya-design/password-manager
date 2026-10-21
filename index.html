@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ZeroPass — log in without sending your password</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg1:#fdf2ff;--bg2:#e6f3ff;--bg3:#fff1e6;--card:rgba(255,255,255,.78);--fg:#1f1633;--mut:#6a5f82;--bd:rgba(120,90,200,.18);--inp:#fff;
+--g1:#7c3aed;--g2:#ec4899;--g3:#f97316;--ok:#12805c;--okbg:#d9f5ea;--bad:#c0262d;--badbg:#fde4e4;--code:#f3effb}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg1:#1a1030;--bg2:#0e1a30;--bg3:#2a1420;--card:rgba(30,24,48,.78);--fg:#f1ecfb;--mut:#a79cc4;--bd:rgba(170,140,255,.2);--inp:#241c3a;--ok:#5fe0b0;--okbg:#10382c;--bad:#ff8c92;--badbg:#3d1a1e;--code:#2a2140}}
+:root[data-theme="dark"]{--bg1:#1a1030;--bg2:#0e1a30;--bg3:#2a1420;--card:rgba(30,24,48,.78);--fg:#f1ecfb;--mut:#a79cc4;--bd:rgba(170,140,255,.2);--inp:#241c3a;--ok:#5fe0b0;--okbg:#10382c;--bad:#ff8c92;--badbg:#3d1a1e;--code:#2a2140}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100vh;color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;
+background:radial-gradient(900px 500px at 10% -10%,rgba(236,72,153,.28),transparent 60%),radial-gradient(800px 500px at 100% 10%,rgba(124,58,237,.25),transparent 60%),radial-gradient(700px 500px at 50% 110%,rgba(249,115,22,.22),transparent 60%),linear-gradient(135deg,var(--bg1),var(--bg2) 55%,var(--bg3));background-attachment:fixed}
+main{max-width:1020px;margin:0 auto;padding:28px 16px 48px}
+.hero{text-align:center;margin-bottom:24px}
+.hero h1{font-size:clamp(28px,5vw,44px);margin:0;letter-spacing:-.02em;background:linear-gradient(90deg,var(--g1),var(--g2),var(--g3));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{color:var(--mut);margin:8px auto 0;max-width:560px;font-size:16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.card{background:var(--card);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--bd);border-radius:20px;padding:18px;box-shadow:0 10px 30px rgba(124,58,237,.10)}
+.card h2{font-size:16px;margin:0 0 10px;display:flex;gap:8px;align-items:center}
+.tabs{display:flex;background:var(--code);border-radius:12px;padding:4px;margin-bottom:14px}
+.tabs button{flex:1;background:transparent;color:var(--mut);box-shadow:none;padding:9px}
+.tabs button.on{background:linear-gradient(90deg,var(--g1),var(--g2));color:#fff}
+label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
+input{width:100%;padding:11px 13px;border:1.5px solid var(--bd);border-radius:12px;background:var(--inp);color:var(--fg);font:inherit}
+input:focus{outline:none;border-color:var(--g2);box-shadow:0 0 0 3px rgba(236,72,153,.18)}
+button{border:0;border-radius:12px;padding:11px 16px;font:inherit;font-weight:600;cursor:pointer;color:#fff;background:linear-gradient(90deg,var(--g1),var(--g2),var(--g3));box-shadow:0 6px 16px rgba(236,72,153,.28);transition:transform .15s}
+button:hover:not(:disabled){transform:translateY(-1px)}
+button:disabled{opacity:.5;cursor:wait}
+.go{width:100%;margin-top:16px;padding:13px}
+.result{margin-top:12px;padding:10px 12px;border-radius:12px;font-weight:600;display:none}
+.result.ok{display:block;background:var(--okbg);color:var(--ok)}
+.result.bad{display:block;background:var(--badbg);color:var(--bad)}
+.lock{font-size:12px;color:var(--mut);margin-top:10px}
+.steps{display:flex;flex-direction:column;gap:8px;min-height:60px}
+.step{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:12px;background:var(--code);animation:in .35s ease both}
+.step i{font-style:normal;font-size:18px;line-height:1.3}
+.step.good{background:var(--okbg);color:var(--ok)}.step.bad{background:var(--badbg);color:var(--bad)}
+.step code{font:11px ui-monospace,Menlo,monospace;word-break:break-all;opacity:.9}
+.empty{color:var(--mut);font-size:13px;padding:6px 2px}
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.stack{display:flex;flex-direction:column;gap:16px}
+.lab{display:grid;grid-template-columns:1fr;gap:8px}
+.lab button{background:var(--code);color:var(--fg);box-shadow:none;text-align:left;font-weight:500;border:1px solid var(--bd)}
+.lab small{display:block;color:var(--mut);font-weight:400}
+pre{margin:8px 0 0;padding:10px;border-radius:12px;background:var(--code);font:11px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-all;display:none}
+.reset{background:none;box-shadow:none;color:var(--mut);font-weight:400;font-size:12px;padding:4px 0;text-decoration:underline}
+@media (max-width:800px){.grid{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.step{animation:none}}
+</style>
+</head>
+<body>
+<main>
+<div class="hero"><h1>🛡️ ZeroPass</h1><p>Log in by <b>proving</b> you know your password, without ever sending it. The server only receives a proof.</p></div>
+<div class="grid">
+  <div class="stack">
+    <div class="card">
+      <div class="tabs"><button id="tabR" class="on">✨ Sign up</button><button id="tabL">🔓 Log in</button></div>
+      <label for="u">Username</label><input id="u" autocomplete="off" maxlength="24" placeholder="e.g. saniya">
+      <label for="p">Password</label><input id="p" type="password" autocomplete="off" placeholder="Stays on this device">
+      <button class="go" id="go">Create account</button>
+      <div class="result" id="res"></div>
+      <div class="lock">🔒 Your password is never sent. Only a proof leaves your browser.</div>
+    </div>
+    <div class="card">
+      <h2>🧪 Attack lab</h2>
+      <div class="lab">
+        <button id="a1">🕵️ Replay a captured proof<small>A thief copies your last login proof and sends it again</small></button>
+        <button id="a2">🎭 Try a wrong password<small>Attempt login with a made-up password</small></button>
+        <button id="a3">🗄️ Steal the server database<small>See what a hacker would get</small></button>
+      </div>
+      <pre id="db"></pre>
+      <button class="reset" id="rs">Reset demo accounts</button>
+    </div>
+  </div>
+  <div class="stack">
+    <div class="card"><h2>📱 Your device <span class="tiny" style="font-weight:400;color:var(--mut)">(private)</span></h2><div class="steps" id="dev"><div class="empty">Sign up or log in to watch what happens.</div></div></div>
+    <div class="card"><h2>🖥️ Server <span style="font-weight:400;color:var(--mut)">(sees only this)</span></h2><div class="steps" id="srv"><div class="empty">Nothing received yet.</div></div></div>
+  </div>
+</div>
+</main>
+<script>
+//CRYPTO-START
+const enc=new TextEncoder();
+const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+const P=2n**256n-2n**32n-977n,N=0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141n;
+const G=[0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798n,0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8n];
+const mod=(a,m=P)=>((a%m)+m)%m;
+function inv(a,m=P){let r0=mod(a,m),r1=m,s0=1n,s1=0n;while(r1){const q=r0/r1;[r0,r1]=[r1,r0-q*r1];[s0,s1]=[s1,s0-q*s1]}return mod(s0,m)}
+function add(p,q){if(!p)return q;if(!q)return p;let l;
+  if(p[0]===q[0]){if(mod(p[1]+q[1])===0n)return null;l=mod(3n*p[0]*p[0]*inv(2n*p[1]))}else l=mod((q[1]-p[1])*inv(q[0]-p[0]));
+  const x=mod(l*l-p[0]-q[0]);return[x,mod(l*(p[0]-x)-p[1])]}
+function mul(k,p){k=mod(k,N);let r=null,a=p;while(k>0n){if(k&1n)r=add(r,a);a=add(a,a);k>>=1n}return r}
+const onCurve=p=>!!p&&mod(p[1]*p[1]-p[0]*p[0]*p[0]-7n)===0n;
+const h64=n=>n.toString(16).padStart(64,'0');
+const encP=p=>'04'+h64(p[0])+h64(p[1]);
+const decP=s=>{if(typeof s!=='string'||!/^04[0-9a-f]{128}$/.test(s))return null;const p=[BigInt('0x'+s.slice(2,66)),BigInt('0x'+s.slice(66))];return onCurve(p)?p:null};
+const H=async s=>BigInt('0x'+hex(await crypto.subtle.digest('SHA-256',enc.encode(s))))%N;
+const rnd=()=>BigInt('0x'+hex(crypto.getRandomValues(new Uint8Array(64))))%N||1n;
+async function deriveX(user,pw){const k=await crypto.subtle.importKey('raw',enc.encode(pw),'PBKDF2',false,['deriveBits']);
+  const b=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',iterations:200000,salt:enc.encode('zeropass-v1:'+user.toLowerCase())},k,512);
+  return BigInt('0x'+hex(b))%N||1n}
+async function makeProof(user,x,Yh,ch){const k=rnd(),R=encP(mul(k,G)),c=await H([user,Yh,R,ch].join('|'));return{R,s:h64(mod(k+c*x,N))}}
+async function checkProof(user,Yh,ch,R,sh){const Y=decP(Yh),Rp=decP(R);if(!Y||!Rp||!/^[0-9a-f]{64}$/.test(sh))return false;
+  const s=BigInt('0x'+sh);if(s<=0n||s>=N)return false;const c=await H([user,Yh,R,ch].join('|'));
+  const a=mul(s,G),b=add(Rp,mul(c,Y));return!!a&&!!b&&a[0]===b[0]&&a[1]===b[1]}
+//CRYPTO-END
+
+// ---- simulated server (runs in this page; keeps only public values) ----
+const Server=(()=>{let users={},ch={};
+  try{users=JSON.parse(localStorage.getItem('zp-users')||'{}')}catch{}
+  const save=()=>{try{localStorage.setItem('zp-users',JSON.stringify(users))}catch{}};
+  return{
+    all:()=>users,
+    register(u,Y){if(users[u])return'That username is taken.';if(!decP(Y))return'Invalid public key.';users[u]=Y;save();return null},
+    challenge(u){const c=hex(crypto.getRandomValues(new Uint8Array(16)));ch[c]=u;return c},
+    async login(u,ci,R,s){if(ch[ci]!==u)return'Unknown or already used challenge';delete ch[ci];
+      if(!users[u])return'Proof rejected';return(await checkProof(u,users[u],ci,R,s))?null:'Proof rejected'},
+    reset(){users={};ch={};save()}}})();
+
+// ---- UI ----
+const $=id=>document.getElementById(id),sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const sh=s=>s.length>24?s.slice(0,12)+'…'+s.slice(-8):s;
+let mode='R',dev=[],srv=[],busy=false,last=null;
+const draw=()=>{for(const[id,a]of[['dev',dev],['srv',srv]])$(id).innerHTML=a.length?a.map(s=>`<div class="step ${s.c}"><i>${s.i}</i><div>${s.t}${s.code?`<br><code>${s.code}</code>`:''}</div></div>`).join(''):'<div class="empty">Nothing yet.</div>'};
+const D=(i,t,c='',code='')=>{dev.push({i,t,c,code});draw()},S=(i,t,c='',code='')=>{srv.push({i,t,c,code});draw()};
+function result(ok,t){const r=$('res');r.className='result '+(ok?'ok':'bad');r.textContent=t}
+function setMode(m){mode=m;$('tabR').className=m==='R'?'on':'';$('tabL').className=m==='L'?'on':'';$('go').textContent=m==='R'?'Create account':'Log in securely';$('res').className='result'}
+$('tabR').onclick=()=>setMode('R');$('tabL').onclick=()=>setMode('L');
+
+async function runLogin(u,pw,wrong){
+  dev=[];srv=[];draw();
+  D('⌨️','You typed '+(wrong?'a <b>made-up</b> password':'your password')+'. It stays on this device.');await sleep(350);
+  const ci=Server.challenge(u);S('🎲','Sent a one-time random challenge',' ',ci);D('📨','Received the challenge');await sleep(350);
+  D('🧮','Turning your password into a secret number x…');const x=await deriveX(u,pw);
+  const Yh=Server.all()[u]||encP(mul(x,G));
+  D('🧾','Built a proof (R, s) that you know x. It reveals nothing about x.','',null);
+  const pr=await makeProof(u,x,Yh,ci);dev[dev.length-1].code='R = '+sh(pr.R)+'\ns = '+sh(pr.s);draw();await sleep(350);
+  S('📥','Received only the proof','',`R = ${sh(pr.R)} · s = ${sh(pr.s)}`);
+  const err=await Server.login(u,ci,pr.R,pr.s);await sleep(350);
+  if(err){S('❌',err,'bad');return{ok:false,err}}
+  S('✅','Proof checks out: s·G = R + c·Y','good');last={u,ci,...pr};return{ok:true}
+}
+
+$('go').onclick=async()=>{
+  if(busy)return;const u=$('u').value.trim(),pw=$('p').value;$('res').className='result';
+  if(!u||!pw){result(false,'Enter a username and password.');return}
+  busy=true;$('go').disabled=true;
+  try{
+    if(mode==='R'){
+      dev=[];srv=[];draw();
+      D('⌨️','You typed your password. It stays on this device.');await sleep(350);
+      D('🧮','Turning it into a secret number x (200,000 PBKDF2 rounds)…');const x=await deriveX(u,pw);await sleep(200);
+      const Yh=encP(mul(x,G));D('✨','Computed your public value Y = x·G. It can’t be turned back into x.','',sh(Yh));await sleep(350);
+      D('📤','Sending the username and Y only. Not x, not your password.');
+      S('📥','Received the username and public value Y','',`${u} → ${sh(Yh)}`);
+      const err=Server.register(u,Yh);
+      if(err){S('❌',err,'bad');result(false,err)}else{S('💾','Stored Y. There is no password to leak.','good');result(true,'Account created! Now switch to Log in.')}
+    }else{
+      if(!Server.all()[u]){result(false,'No such account yet. Sign up first.');return}
+      const r=await runLogin(u,pw,false);result(r.ok,r.ok?`🎉 Welcome back, ${u}!`:'Login failed: wrong password or username.');
+    }
+  }finally{busy=false;$('go').disabled=false}
+};
+
+$('a1').onclick=async()=>{
+  if(busy)return;if(!last){result(false,'Log in once first, so there is a proof to copy.');return}
+  dev=[];srv=[];draw();D('🕵️','A thief copied your last proof and sends it again.','bad');await sleep(350);
+  S('📥','Received the same proof again','',`R = ${sh(last.R)}`);
+  const err=await Server.login(last.u,last.ci,last.R,last.s);await sleep(350);
+  S(err?'❌':'✅',err?'Rejected: that one-time challenge was already used.':'Accepted',err?'bad':'good');
+  result(!!err,err?'Replay blocked ✔':'Replay worked (bug!)')
+};
+$('a2').onclick=async()=>{
+  if(busy)return;const u=$('u').value.trim();if(!Server.all()[u]){result(false,'Type the username of an existing account first.');return}
+  busy=true;try{const r=await runLogin(u,'definitely-not-the-password',true);result(!r.ok,'Wrong password rejected ✔')}finally{busy=false}
+};
+$('a3').onclick=()=>{
+  const e=Object.entries(Server.all()),p=$('db');p.style.display='block';
+  p.textContent=e.length?'users table\n'+e.map(([u,y])=>`${u} → ${y}`).join('\n')+'\n\nOnly public values. No password and no password hash. Without x, a thief can’t log in.':'The database is empty. Sign up first.'
+};
+$('rs').onclick=()=>{Server.reset();last=null;dev=[];srv=[];draw();$('db').style.display='none';result(true,'Demo accounts cleared.')};
+</script>
+</body>
+</html>
